@@ -1,0 +1,13 @@
+Album Viewer
+
+An application meant to pull images from a specified Picasa web album, and
+then display the images on a display connected to a Raspberry Pi. Meant as
+a digitial photo frame where the contents can be continually updated from the web.
+
+MISC
+
+- A guide to installing the Python Client libraries can be found @
+  https://developers.google.com/gdata/articles/python_client_lib
+  If you are using Python 2.5 or later, the ElementTree library should
+  already be present.
+
