@@ -61,6 +61,14 @@ uint16_t swapBytes(uint16_t val)
 	return ret_val;
 }
 
+/* Parse the quantization tables (DQT) */
+void parseDqt(uint8_t *ptr)
+{
+	uint16_t marker = swapBytes(*(uint16_t *)ptr);
+	if (marker = 0xFFDB)
+		LOGD("Found DQT table!\n");
+}
+
 /*
  * FUNCTION parseHeader
  *
@@ -70,6 +78,10 @@ uint16_t swapBytes(uint16_t val)
  */
 int parseHeader()
 {
+
+	uint8_t *cur_ptr;
+	uint8_t jump_len;
+	uint16_t new_app0;
 	// Cast to a jfif_header, and then parse.
 	jfif_header *hdr = (jfif_header *)bArray;
 
@@ -107,9 +119,19 @@ int parseHeader()
 	jInfo->hdr.y_pixel = hdr->y_pixel;
 	LOGD("The thumbnail Y size is %u\n", jInfo->hdr.y_pixel);
 
-	// Have to ascertain the number of extensions, so as to find
-	// where the data offset lies.
+	cur_ptr = &bArray[4 + jInfo->hdr.app0_len];
 
+	// Keep skipping over the useless extension fields
+	new_app0 = swapBytes(*(uint16_t *)cur_ptr);
+	while (new_app0 == 0xFFEC || new_app0 == 0xFFED ||
+			new_app0 == 0xFFEE || new_app0 == 0xFFEF) {
+		LOGD("Skipping one extension field\n");
+		cur_ptr += 2;
+		cur_ptr += swapBytes(*(uint16_t *)cur_ptr);
+		new_app0 = swapBytes(*(uint16_t *)cur_ptr);
+	}
+
+	parseDqt(cur_ptr);
 	return 0;
 }
 
