@@ -17,8 +17,18 @@ typedef struct {
 	uint8_t		y_pixel;
 } __attribute__((__packed__)) jfif_header ;
 
+// Define Quantization table
+// TODO(pmalani): Need to account for multiple QT
+typedef struct {
+	uint16_t	len;
+	uint8_t		pq; // QT precision
+	uint8_t		tq; // QT identifier
+	uint8_t		el[64]; // QT elements
+} __attribute__((__packed__)) jfif_dqt;
+
 typedef struct {
 	jfif_header	hdr;
+	jfif_dqt	dqt;
 } jfif_info;
 
 #endif
