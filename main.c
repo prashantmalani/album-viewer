@@ -65,7 +65,7 @@ uint16_t swapBytes(uint16_t val)
 void parseDqt(uint8_t *ptr)
 {
 	uint16_t marker = swapBytes(*(uint16_t *)ptr);
-	if (marker = 0xFFDB)
+	if (marker == 0xFFDB)
 		LOGD("Found DQT table!\n");
 }
 
@@ -98,7 +98,7 @@ int parseHeader()
 
 	memcpy(jInfo->hdr.id_str, hdr->id_str, sizeof(hdr->id_str) /
 			sizeof(hdr->id_str[0]));
-	if (strcmp(jInfo->hdr.id_str, "JFIF"))
+	if (strcmp((char *)jInfo->hdr.id_str, "JFIF"))
 		return -1;
 
 	jInfo->hdr.version = hdr->version;
