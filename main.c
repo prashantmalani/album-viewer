@@ -62,11 +62,71 @@ uint16_t swapBytes(uint16_t val)
 }
 
 /* Parse the quantization tables (DQT) */
-void parseDqt(uint8_t *ptr)
+int parseDqt(uint8_t **ptr)
 {
-	uint16_t marker = swapBytes(*(uint16_t *)ptr);
-	if (marker == 0xFFDB)
+	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
+	int index, i;
+	uint16_t length;
+	uint8_t pqtq;
+
+	*ptr += 2;
+	if (marker == DQT_MARKER) {
 		LOGD("Found DQT table!\n");
+	} else {
+		LOGD("Second DQT marker not found\r");
+		return 0;
+	}
+
+	length = swapBytes(*(uint16_t *)*ptr);
+	LOGD("Quantization table length is %u\n", length);
+
+	*ptr += 2;
+	// Figure out precision, as well as destination (whether Y or Cb/Cr)
+	// TODO(pmalani): Assuming only 8 bit precision.
+
+	do {
+		pqtq = **ptr;
+
+		if (!(pqtq & 0xF)) {
+			LOGD("Found DQT for Y\n");
+			index = 0;
+		} else {
+			LOGD("Found DQT for Cb/Cr\n");
+			index = 1;
+		}
+
+		if (pqtq >> 4) {
+			LOGE("Precision greater than 8 bits not supported\b");
+			return -1;
+		}
+
+		jInfo->dqt[index].lq = length;
+		jInfo->dqt[index].pq = pqtq >> 4;
+		jInfo->dqt[index].tq = index;
+		(*ptr)++;
+
+		for (i = 0; i < 64; i++, (*ptr)++)
+			jInfo->dqt[index].el[i] = **ptr;
+
+		LOGD("The DQT table found is \n");
+		for (i = 0; i < 64; i++)  {
+			LOGD("%02u ", jInfo->dqt[index].el[i]);
+			if (!((i + 1) % 8))
+				LOGD("\n");
+		}
+
+		// Check for the second Quantization table if present
+		pqtq = **ptr;
+		if (pqtq == 0 || pqtq == 1) {
+			jInfo->one_dqt = false;
+			continue;
+		} else {
+			LOGD("There is no other quantization table\n");
+			jInfo->one_dqt = true;
+			break;
+		}
+	} while (jInfo->one_dqt == false);
+	return 0;
 }
 
 /*
@@ -86,7 +146,7 @@ int parseHeader()
 	jfif_header *hdr = (jfif_header *)bArray;
 
 	jInfo->hdr.soi = swapBytes(hdr->soi);
-	if (jInfo->hdr.soi != 0xffd8)
+	if (jInfo->hdr.soi != SOI_MARKER)
 		return -1;
 
 	jInfo->hdr.app0 = swapBytes(hdr->app0);
@@ -131,7 +191,11 @@ int parseHeader()
 		new_app0 = swapBytes(*(uint16_t *)cur_ptr);
 	}
 
-	parseDqt(cur_ptr);
+	if (parseDqt(&cur_ptr)) {
+		LOGE("Error parsing QT\n");
+		return -1;
+	}
+
 	return 0;
 }
 

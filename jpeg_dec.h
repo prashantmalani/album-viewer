@@ -2,6 +2,10 @@
 #define JPEG_DEC_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#define DQT_MARKER	0xFFDB
+#define SOI_MARKER	0XFFD8
 
 typedef struct {
 	uint16_t	soi;
@@ -20,7 +24,7 @@ typedef struct {
 // Define Quantization table
 // TODO(pmalani): Need to account for multiple QT
 typedef struct {
-	uint16_t	len;
+	uint16_t	lq;
 	uint8_t		pq; // QT precision
 	uint8_t		tq; // QT identifier
 	uint8_t		el[64]; // QT elements
@@ -28,7 +32,8 @@ typedef struct {
 
 typedef struct {
 	jfif_header	hdr;
-	jfif_dqt	dqt;
+	jfif_dqt	dqt[2];
+	bool		one_dqt;
 } jfif_info;
 
 #endif
