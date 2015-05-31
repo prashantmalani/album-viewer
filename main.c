@@ -73,8 +73,8 @@ int parseDqt(uint8_t **ptr)
 	if (marker == DQT_MARKER) {
 		LOGD("Found DQT table!\n");
 	} else {
-		LOGD("Second DQT marker not found\r");
-		return 0;
+		LOGD("DQT marker not found\r");
+		return -1;
 	}
 
 	length = swapBytes(*(uint16_t *)*ptr);
@@ -128,6 +128,78 @@ int parseDqt(uint8_t **ptr)
 	} while (jInfo->one_dqt == false);
 	return 0;
 }
+
+int parseSof(uint8_t **ptr)
+{
+	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
+	uint16_t length;
+	int i;
+
+	*ptr += 2;
+	if (marker == SOF_MARKER) {
+		LOGD("Found SOF table!\n");
+	} else {
+		LOGD("SOF marker not found\r");
+		return -1;
+	}
+
+
+	length = swapBytes(*(uint16_t *)*ptr);
+	LOGD("SOF table length is %u\n", length);
+	*ptr += 2;
+
+	jInfo->sof.prec = **ptr;
+	LOGD("The SOF sample precision is %u\n", jInfo->sof.prec);
+	(*ptr)++;
+
+	jInfo->sof.y = swapBytes(*(uint16_t *)*ptr);
+	LOGD("SOF number of lines is %u\n", jInfo->sof.y);
+	*ptr += 2;
+	jInfo->sof.x = swapBytes(*(uint16_t *)*ptr);
+	LOGD("SOF number of lines is %u\n", jInfo->sof.x);
+	*ptr += 2;
+
+	jInfo->sof.num_f = **ptr;
+	LOGD("The number of image components is %u\n", jInfo->sof.num_f);
+	(*ptr)++;
+
+	for (i = 0; i < jInfo->sof.num_f; i++) {
+		jInfo->sof.comp[i].c = **ptr;
+		(*ptr)++;
+		jInfo->sof.comp[i].h = **ptr >> 4;
+		jInfo->sof.comp[i].v = **ptr & 0xF;
+		(*ptr)++;
+
+		jInfo->sof.comp[i].qt_sel = **ptr;
+		(*ptr)++;
+		LOGD("Specs for comp=%d are c=%u, h=%u, v=%u, qt_sel=%u\n",
+			i,
+			jInfo->sof.comp[i].c,
+			jInfo->sof.comp[i].h,
+			jInfo->sof.comp[i].v,
+			jInfo->sof.comp[i].qt_sel);
+	}
+
+	return 0;
+}
+
+int parseHuff(uint8_t **ptr)
+{
+	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
+	uint16_t length;
+	int i;
+
+	*ptr += 2;
+	if (marker == HUF_MARKER) {
+		LOGD("Found HUF table!\n");
+	} else {
+		LOGD("HUF marker not found\r");
+		return -1;
+	}
+
+	return 0;
+}
+
 
 /*
  * FUNCTION parseHeader
@@ -193,6 +265,16 @@ int parseHeader()
 
 	if (parseDqt(&cur_ptr)) {
 		LOGE("Error parsing QT\n");
+		return -1;
+	}
+
+	if (parseSof(&cur_ptr)) {
+		LOGE("Error parsing SOF\n");
+		return -1;
+	}
+
+	if (parseHuff(&cur_ptr)) {
+		LOGE("Error parsing Huffman Table.\n");
 		return -1;
 	}
 

@@ -6,6 +6,8 @@
 
 #define DQT_MARKER	0xFFDB
 #define SOI_MARKER	0XFFD8
+#define SOF_MARKER	0xFFC0
+#define HUF_MARKER	0xFFC4
 
 typedef struct {
 	uint16_t	soi;
@@ -28,12 +30,30 @@ typedef struct {
 	uint8_t		pq; // QT precision
 	uint8_t		tq; // QT identifier
 	uint8_t		el[64]; // QT elements
-} __attribute__((__packed__)) jfif_dqt;
+} jfif_dqt;
+
+typedef struct {
+	uint8_t		c; // Component indentifier
+	uint8_t		h; // Horizontal sampling factor
+	uint8_t		v; // Veritical sampling factor
+	uint8_t		qt_sel; // Quantization table selector
+} jfif_sof_comp;
+
+typedef struct {
+	uint16_t	len;
+	uint8_t		prec;
+	uint16_t	y;
+	uint16_t	x;
+	uint8_t		num_f;
+	jfif_sof_comp	comp[3]; // For Y U and V
+} jfif_sof;
+
 
 typedef struct {
 	jfif_header	hdr;
 	jfif_dqt	dqt[2];
 	bool		one_dqt;
+	jfif_sof	sof;
 } jfif_info;
 
 #endif
