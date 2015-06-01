@@ -7,8 +7,6 @@
  * Date  : 04/20/2015
  *
  */
-#include "debug.h"
-
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -18,6 +16,8 @@
 
 /* Array which stores the raw JPEG bytes */
 uint8_t *bArray;
+
+int debug_level = LOG_DEBUG;
 
 jfif_info *jInfo;
 
@@ -187,15 +187,48 @@ int parseHuff(uint8_t **ptr)
 {
 	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
 	uint16_t length;
-	int i;
+	int i, num_codes;
+	uint8_t class_id;
+	uint8_t cl, id;
 
 	*ptr += 2;
 	if (marker == HUF_MARKER) {
-		LOGD("Found HUF table!\n");
+		LOGD("Found HUF tables!\n");
 	} else {
 		LOGD("HUF marker not found\r");
 		return -1;
 	}
+
+	length = swapBytes(*(uint16_t *)*ptr);
+	LOGD("Table length is %u\n", length);
+	*ptr += 2;
+
+	class_id = **ptr;
+	(*ptr)++;
+
+	cl = class_id >> 4;
+	id = class_id & 0xF;
+
+	LOGD("Table class = %u, id = %u\n", cl, id);
+
+	memcpy(jInfo->huff[cl][id].l, *ptr, 16);
+	*ptr += 16;
+
+	num_codes = 0;
+	// Need to malloc space to copy the actual code-values
+	for (i = 0; i < 16; i++) {
+		LOGD("Number of codes of length %d : %u\n", (i + 1),
+			jInfo->huff[cl][id].l[i]);
+		num_codes += jInfo->huff[cl][id].l[i];
+	}
+
+	jInfo->huff[cl][id].codes = malloc(sizeof(uint8_t) * num_codes);
+
+	memcpy(jInfo->huff[cl][id].codes, *ptr, num_codes);
+	*ptr += num_codes;
+
+	//Now we need to construct the table
+	genHuff(&(jInfo->huff[cl][id]));
 
 	return 0;
 }

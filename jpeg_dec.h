@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "debug.h"
 
 #define DQT_MARKER	0xFFDB
 #define SOI_MARKER	0XFFD8
@@ -48,13 +49,32 @@ typedef struct {
 	jfif_sof_comp	comp[3]; // For Y U and V
 } jfif_sof;
 
+typedef struct node {
+	uint8_t 	val;
+	struct node	*l;
+	struct node	*r;
+} node_t;
+
+typedef struct {
+	uint16_t	len;
+	uint8_t		tclass;
+	uint8_t		tid;
+	uint8_t		l[16]; // Num of codes for each length
+	uint8_t		*codes; // Array holding actual codes
+	node_t		*root;
+
+} jfif_huff;
 
 typedef struct {
 	jfif_header	hdr;
 	jfif_dqt	dqt[2];
 	bool		one_dqt;
 	jfif_sof	sof;
+	jfif_huff	huff[2][2]; // Keep 4 since we assume 2 each
+				 // for Y and Cb/Cr respectively.
 } jfif_info;
+
+void genHuff(jfif_huff *huf);
 
 #endif
 
