@@ -153,10 +153,10 @@ int parseSof(uint8_t **ptr)
 	(*ptr)++;
 
 	jInfo->sof.y = swapBytes(*(uint16_t *)*ptr);
-	LOGD("SOF number of lines is %u\n", jInfo->sof.y);
+	LOGD("SOF number of Y lines is %u\n", jInfo->sof.y);
 	*ptr += 2;
 	jInfo->sof.x = swapBytes(*(uint16_t *)*ptr);
-	LOGD("SOF number of lines is %u\n", jInfo->sof.x);
+	LOGD("SOF number of X lines is %u\n", jInfo->sof.x);
 	*ptr += 2;
 
 	jInfo->sof.num_f = **ptr;
