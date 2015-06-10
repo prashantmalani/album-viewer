@@ -64,7 +64,6 @@ static node_t *allocNode()
 	node_t *node = malloc(sizeof(node_t));
 	node->l = NULL;
 	node->r = NULL;
-	LOGD("Created node\n");
 	return node;
 }
 

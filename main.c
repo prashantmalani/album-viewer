@@ -191,44 +191,50 @@ int parseHuff(uint8_t **ptr)
 	uint8_t class_id;
 	uint8_t cl, id;
 
-	*ptr += 2;
-	if (marker == HUF_MARKER) {
-		LOGD("Found HUF tables!\n");
-	} else {
-		LOGD("HUF marker not found\r");
-		return -1;
-	}
+	do {
+		if (marker == HUF_MARKER) {
+			LOGD("Found HUF table!\n");
+		} else {
+			LOGD("HUF marker not found\r");
+			break;
+		}
 
-	length = swapBytes(*(uint16_t *)*ptr);
-	LOGD("Table length is %u\n", length);
-	*ptr += 2;
+		// Advance the ptr only if we know it's a Huffman table.
+		*ptr += 2;
 
-	class_id = **ptr;
-	(*ptr)++;
+		length = swapBytes(*(uint16_t *)*ptr);
+		LOGD("Table length is %u\n", length);
+		*ptr += 2;
 
-	cl = class_id >> 4;
-	id = class_id & 0xF;
+		class_id = **ptr;
+		(*ptr)++;
 
-	LOGD("Table class = %u, id = %u\n", cl, id);
+		cl = class_id >> 4;
+		id = class_id & 0xF;
 
-	memcpy(jInfo->huff[cl][id].l, *ptr, 16);
-	*ptr += 16;
+		LOGD("Table class = %u, id = %u\n", cl, id);
 
-	num_codes = 0;
-	// Need to malloc space to copy the actual code-values
-	for (i = 0; i < 16; i++) {
-		LOGD("Number of codes of length %d : %u\n", (i + 1),
-			jInfo->huff[cl][id].l[i]);
-		num_codes += jInfo->huff[cl][id].l[i];
-	}
+		memcpy(jInfo->huff[cl][id].l, *ptr, 16);
+		*ptr += 16;
 
-	jInfo->huff[cl][id].codes = malloc(sizeof(uint8_t) * num_codes);
+		num_codes = 0;
+		// Need to malloc space to copy the actual code-values
+		for (i = 0; i < 16; i++) {
+			LOGD("Number of codes of length %d : %u\n", (i + 1),
+					jInfo->huff[cl][id].l[i]);
+			num_codes += jInfo->huff[cl][id].l[i];
+		}
 
-	memcpy(jInfo->huff[cl][id].codes, *ptr, num_codes);
-	*ptr += num_codes;
+		jInfo->huff[cl][id].codes = malloc(sizeof(uint8_t) * num_codes);
 
-	//Now we need to construct the table
-	genHuff(&(jInfo->huff[cl][id]));
+		memcpy(jInfo->huff[cl][id].codes, *ptr, num_codes);
+		*ptr += num_codes;
+
+		//Now we need to construct the table
+		genHuff(&(jInfo->huff[cl][id]));
+
+		marker = swapBytes(*(uint16_t *)*ptr);
+	} while (true); // TODO(pmalani): Beware of endless loops
 
 	return 0;
 }
