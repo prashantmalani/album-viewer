@@ -5,7 +5,7 @@ void createNode(node_t **node, int h, int next[], jfif_huff *huf);
 void printCodes(node_t *node, char buf[], int height);
 
 // TODO(pmalani): Move this into the huffman table struct?
-static int lowest_depth = 0;
+static int codes_left;
 
 /*
  * Begin the creation of the Huffman table for string decoding
@@ -28,12 +28,13 @@ void genHuff(jfif_huff *huf)
 			index += huf->l[i];
 		}
 	}
+
+	// Used to keep track of whether we need to add more nodes to the tree.
+	codes_left = index;
 	LOGD("Starting to generate Huffman Table\n");
 
 	for (i = 0; i < 16; i++)
 		LOGD("Next code index for length %d : %d\n", i + 1, next[i]);
-
-	lowest_depth = 0;
 
 	createNode(&huf->root, 0, next, huf);
 	printCodes(huf->root, buf, 0);
@@ -83,19 +84,8 @@ void createNode(node_t **node, int h, int next[], jfif_huff *huf)
 		return;
 	}
 
-	// When we back track through up the tree from say h=3. there may still
-	// be codes of that length on the other branch of the tree. But the
-	// codes of lengths < 3 might have been already written out. To prevent
-	// a premature end to the traversal, we keep track of the lowest depth
-	// we've reached, and ensure that we traverse to at least that length.
-	// I think there might be some overhead here in the case that there is
-	// only one element of a particular length, but we can revisit it
-	// later.
-	if (h > lowest_depth)
-		lowest_depth = h;
-
 	if (h > 16 || (huf->l[h - 1] <= 0 && huf->l[h] <= 0 &&
-		h == lowest_depth)) {
+		!codes_left)) {
 		// The greatest bit length is 16, so this is the end codition.
 		// The other truncation option is when we have run out codes.
 		// This is known when the current height has no more codes,
@@ -113,6 +103,7 @@ void createNode(node_t **node, int h, int next[], jfif_huff *huf)
 		(*node)->val = huf->codes[next[h - 1]];
 		next[h - 1] += 1;
 		huf->l[h - 1] -= 1;
+		codes_left--;
 	} else {
 		// Continue for left and right
 		createNode(&((*node)->l), h + 1, next, huf);

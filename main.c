@@ -239,6 +239,26 @@ int parseHuff(uint8_t **ptr)
 	return 0;
 }
 
+int parseSos(uint8_t **ptr)
+{
+	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
+	uint16_t length;
+
+	if (marker == SOS_MARKER) {
+		LOGD("Found Start of Scan marker\n");
+	} else {
+		LOGE("Start of Scan not found\n");
+		return -1;
+	}
+
+	*ptr += 2;
+	length = swapBytes(*(uint16_t *)*ptr);
+	LOGD("Start of scan header size is %u\n", length);
+	*ptr += 2;
+
+	return 0;
+}
+
 
 /*
  * FUNCTION parseHeader
@@ -314,6 +334,11 @@ int parseHeader()
 
 	if (parseHuff(&cur_ptr)) {
 		LOGE("Error parsing Huffman Table.\n");
+		return -1;
+	}
+
+	if (parseSos(&cur_ptr)) {
+		LOGE("Error parsing SOS Table\n");
 		return -1;
 	}
 

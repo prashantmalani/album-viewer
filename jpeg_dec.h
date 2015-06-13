@@ -9,6 +9,7 @@
 #define SOI_MARKER	0XFFD8
 #define SOF_MARKER	0xFFC0
 #define HUF_MARKER	0xFFC4
+#define SOS_MARKER	0xFFDA
 
 typedef struct {
 	uint16_t	soi;
