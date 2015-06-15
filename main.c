@@ -243,6 +243,8 @@ int parseSos(uint8_t **ptr)
 {
 	uint16_t marker = swapBytes(*(uint16_t *)*ptr);
 	uint16_t length;
+	uint8_t comp_sel, comp_ac_dc;
+	int i;
 
 	if (marker == SOS_MARKER) {
 		LOGD("Found Start of Scan marker\n");
@@ -255,6 +257,43 @@ int parseSos(uint8_t **ptr)
 	length = swapBytes(*(uint16_t *)*ptr);
 	LOGD("Start of scan header size is %u\n", length);
 	*ptr += 2;
+
+	jInfo->sos.num_c = **ptr;
+	(*ptr)++;
+
+	for (i = 0; i < jInfo->sos.num_c; i++) {
+		comp_sel = **ptr;
+		(*ptr)++;
+		comp_ac_dc = **ptr;
+		(*ptr)++;
+
+		jInfo->sos.dc_sel[comp_sel] = comp_ac_dc >> 4;
+		jInfo->sos.ac_sel[comp_sel] = comp_ac_dc & 0xF;
+
+		LOGD("Coding tables comp=%u, dc=%u, ac=%u\n", comp_sel,
+			jInfo->sos.dc_sel[comp_sel],
+			jInfo->sos.ac_sel[comp_sel]);
+	}
+
+	// Just to ensure that we're decoding correctly, check that the
+	// remaining bits are also what we think they should be.
+	if (**ptr != 0) {
+		LOGD("Start of spec selection byte incorrect!\n");
+		return -1;
+	}
+	(*ptr)++;
+
+	if (**ptr != 63) {
+		LOGD("End of spec selection byte incorrect!\n");
+		return -1;
+	}
+	(*ptr)++;
+
+	if (**ptr != 0) {
+		LOGD("Approx. info byte incorrect!\n");
+		return -1;
+	}
+	(*ptr)++;
 
 	return 0;
 }

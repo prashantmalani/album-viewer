@@ -67,12 +67,19 @@ typedef struct {
 } jfif_huff;
 
 typedef struct {
+	uint8_t		num_c; // Number of image components
+	uint8_t		dc_sel[3]; // Per comp. DC coding table selector. 
+	uint8_t		ac_sel[3]; // Per comp. AC coding table selector.
+} jfif_sos;
+
+typedef struct {
 	jfif_header	hdr;
 	jfif_dqt	dqt[2];
 	bool		one_dqt;
 	jfif_sof	sof;
 	jfif_huff	huff[2][2]; // Keep 4 since we assume 2 each
 				 // for Y and Cb/Cr respectively.
+	jfif_sos	sos;
 } jfif_info;
 
 void genHuff(jfif_huff *huf);
