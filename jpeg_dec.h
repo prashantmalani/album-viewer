@@ -84,8 +84,13 @@ typedef struct {
 	jfif_sos	sos;
 } jfif_info;
 
-void genHuff(jfif_huff *huf);
 uint16_t swapBytes(uint16_t val);
+
+/* Huff stuff */
+void genHuff(jfif_huff *huf);
+uint16_t getNumBits(uint8_t num);
+
+/* Scan data stuff */
 void parseScanData(uint8_t *ptr, jfif_info *j_info);
 
 #endif

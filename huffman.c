@@ -144,7 +144,7 @@ static inline uint8_t getBit()
 		ret_val = (curByte >> (bitsLeft - 1)) & 0x1;
 		bitsLeft--;
 	}
-	return ret_val;
+	return (ret_val & 0x1);
 }
 
 uint8_t traverseTree(node_t *node)
@@ -155,7 +155,8 @@ uint8_t traverseTree(node_t *node)
 	return traverseTree(getBit() ? node->r : node->l);
 }
 
-/* FUNCTION getVal
+/*
+ * FUNCTION getVal
  *
  * Use the bits to traverse the supplied huffman table, and get the next
  * value based on the encoded bit string
@@ -163,4 +164,19 @@ uint8_t traverseTree(node_t *node)
 uint8_t getVal(jfif_huff *huff)
 {
 	return traverseTree(huff->root);
+}
+
+/*
+ * FUNCTION getNumBits
+ *
+ * Get the number formed by reading the next successive bits in the data.
+ */
+uint16_t getNumBits(uint8_t num)
+{
+	uint16_t ret_val = 0;
+	while (num--) {
+		ret_val <<= 1;
+		ret_val |= getBit();
+	}
+	return ret_val;
 }
