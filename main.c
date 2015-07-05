@@ -456,6 +456,7 @@ int main(int argc, char *argv[])
 	}
 
 	// From here on in we can actually refer only to cleanArray
+	parseScanData(cleanArray, jInfo);
 
 	free(jInfo);
 	free(bArray);

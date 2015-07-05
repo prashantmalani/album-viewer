@@ -1,11 +1,16 @@
 #include "jpeg_dec.h"
 #include <stdlib.h>
+#include <limits.h>
 
 void createNode(node_t **node, int h, int next[], jfif_huff *huf);
 void printCodes(node_t *node, char buf[], int height);
 
 // TODO(pmalani): Move this into the huffman table struct?
 static int codes_left;
+
+uint8_t *huffPtr;
+uint8_t bitsLeft;
+uint8_t curByte;
 
 /*
  * Begin the creation of the Huffman table for string decoding
@@ -112,4 +117,50 @@ void createNode(node_t **node, int h, int next[], jfif_huff *huf)
 	return;
 }
 
+/*
+ * FUNCTION initHuffParsing
+ *
+ * Setup the book keeping while parsing the scan data for huffman codes
+ * via the trees. Since this is done on a bit by bit basis, the code here needs
+ * to keep track of when the next byte needs to be loaded in, and those bits
+ * parsed.
+ */
+void initHuffParsing(uint8_t *ptr)
+{
+	huffPtr = ptr;
+	bitsLeft = CHAR_BIT;
+	curByte = *huffPtr;
+}
 
+static inline uint8_t getBit()
+{
+	uint8_t ret_val;
+	if (bitsLeft == 1) {
+		ret_val = curByte;
+		huffPtr++;
+		curByte =*huffPtr;
+		bitsLeft = CHAR_BIT;
+	} else {
+		ret_val = (curByte >> (bitsLeft - 1)) & 0x1;
+		bitsLeft--;
+	}
+	return ret_val;
+}
+
+uint8_t traverseTree(node_t *node)
+{
+	if (!node->l && !node->r)
+		return node->val;
+
+	return traverseTree(getBit() ? node->r : node->l);
+}
+
+/* FUNCTION getVal
+ *
+ * Use the bits to traverse the supplied huffman table, and get the next
+ * value based on the encoded bit string
+ * */
+uint8_t getVal(jfif_huff *huff)
+{
+	return traverseTree(huff->root);
+}

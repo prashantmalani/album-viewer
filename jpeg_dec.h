@@ -85,6 +85,8 @@ typedef struct {
 } jfif_info;
 
 void genHuff(jfif_huff *huf);
+uint16_t swapBytes(uint16_t val);
+void parseScanData(uint8_t *ptr, jfif_info *j_info);
 
 #endif
 
