@@ -16,6 +16,8 @@
 
 /* Array which stores the raw JPEG bytes */
 uint8_t *bArray;
+/* Array which stores cleaned scan data, without app markers */
+uint8_t *cleanArray;
 
 int debug_level = LOG_DEBUG;
 
@@ -38,6 +40,7 @@ int loadFile(char *path)
 	fseek(fp, 0, SEEK_SET);
 
 	bArray = malloc(fsize * sizeof(uint8_t));
+	cleanArray = malloc(fsize * sizeof(uint8_t));
 	fread(bArray, fsize, 1, fp);
 	fclose(fp);
 
@@ -206,6 +209,7 @@ int parseHuff(uint8_t **ptr)
 		LOGD("Table length is %u\n", length);
 		*ptr += 2;
 
+continuous_tables:
 		class_id = **ptr;
 		(*ptr)++;
 
@@ -234,6 +238,12 @@ int parseHuff(uint8_t **ptr)
 		genHuff(&(jInfo->huff[cl][id]));
 
 		marker = swapBytes(*(uint16_t *)*ptr);
+		// Here we make a decision whether each Huffman table is
+		// preceded by the App marker or not. And alter the loop
+		// accordingly.
+		if ((marker & APP_MASK) != APP_MASK) {
+			goto continuous_tables;
+		}
 	} while (true); // TODO(pmalani): Beware of endless loops
 
 	return 0;
@@ -298,6 +308,31 @@ int parseSos(uint8_t **ptr)
 	return 0;
 }
 
+/*
+ * FUNCTION sanitizeScanData
+ *
+ * Parse the scan data, and remove all app markers which were added for
+ * data integrity.
+ */
+void sanitizeScanData(uint8_t *ptr)
+{
+	uint8_t *new_ptr = cleanArray;
+	uint16_t cur_short = swapBytes(*(uint16_t *)ptr);
+	LOGD("Starting scan data sanitization\n");
+	while (cur_short != EOI_MARKER) {
+		if (*ptr != 0xFF) {
+			*new_ptr++ = *ptr++;
+		} else {
+			if (*(ptr + 1) == 0x00)
+				*new_ptr++ = 0xFF;
+			ptr += 2;
+		}
+		cur_short = swapBytes(*(uint16_t *)ptr);
+	}
+	memcpy(new_ptr, ptr, sizeof(uint16_t));
+	LOGD("Completed sanitization successfully!");
+	return;
+}
 
 /*
  * FUNCTION parseHeader
@@ -308,7 +343,7 @@ int parseSos(uint8_t **ptr)
  */
 int parseHeader()
 {
-
+	int i;
 	uint8_t *cur_ptr;
 	uint8_t jump_len;
 	uint16_t new_app0;
@@ -381,6 +416,18 @@ int parseHeader()
 		return -1;
 	}
 
+	sanitizeScanData(cur_ptr);
+
+	// Print out sanitized contents for debug purposes.
+	LOGD("\n");
+	for (i = 0; swapBytes(*(uint16_t *)(cleanArray + i)) != EOI_MARKER;
+		i++) {
+		LOGD("%02x ", cleanArray[i]);
+		if (!((i+1) % 16))
+			LOGD("\n");
+	}
+	LOGD("\n");
+
 	return 0;
 }
 
@@ -403,11 +450,16 @@ int main(int argc, char *argv[])
 		LOGE("Error parsing Image header\n");
 		free(jInfo);
 		free(bArray);
+		free(cleanArray);
+
 		return -1;
 	}
 
+	// From here on in we can actually refer only to cleanArray
+
 	free(jInfo);
 	free(bArray);
+	free(cleanArray);
 	return 0;
 }
 

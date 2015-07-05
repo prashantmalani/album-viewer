@@ -5,11 +5,13 @@
 #include <stdbool.h>
 #include "debug.h"
 
+#define APP_MASK	0xFF00
 #define DQT_MARKER	0xFFDB
 #define SOI_MARKER	0XFFD8
 #define SOF_MARKER	0xFFC0
 #define HUF_MARKER	0xFFC4
 #define SOS_MARKER	0xFFDA
+#define EOI_MARKER	0xFFD9
 
 typedef struct {
 	uint16_t	soi;
