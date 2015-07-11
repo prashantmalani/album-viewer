@@ -160,6 +160,9 @@ uint8_t traverseTree(node_t *node)
  *
  * Use the bits to traverse the supplied huffman table, and get the next
  * value based on the encoded bit string
+ *
+ * NOTE: Repeated calls to getVal() will give the successive codes in
+ * the bit stream.
  * */
 uint8_t getVal(jfif_huff *huff)
 {

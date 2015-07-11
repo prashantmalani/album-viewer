@@ -89,6 +89,8 @@ uint16_t swapBytes(uint16_t val);
 /* Huff stuff */
 void genHuff(jfif_huff *huf);
 uint16_t getNumBits(uint8_t num);
+void initHuffParsing(uint8_t *ptr);
+uint8_t getVal(jfif_huff *huff);
 
 /* Scan data stuff */
 void parseScanData(uint8_t *ptr, jfif_info *j_info);
