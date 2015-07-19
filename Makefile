@@ -1,4 +1,4 @@
-LFLAGS =
+LFLAGS = -lm
 default: main
 
 main.o: main.c

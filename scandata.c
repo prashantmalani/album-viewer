@@ -1,6 +1,7 @@
 #include "jpeg_dec.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 static int zero_base[] = {
 	-1, -3, -7, -15, -31, -63, -127, -255, -511, -1023, -2047 };
@@ -12,8 +13,9 @@ static int dezigzag_index[] = {
 	42, 49, 56, 57, 50, 43, 67, 29, 22, 15, 23, 30, 37, 44, 51,
 	58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62,
 	63 };
+static int dc_val;
 
-int getDcVal(jfif_huff *huff)
+static int getDcVal(jfif_huff *huff)
 {
 	uint8_t num_bits = getVal(huff);
 	int val;
@@ -38,7 +40,7 @@ int getDcVal(jfif_huff *huff)
 
 static void dezigzagBlock(const int index[], int block[])
 {
-	int *temp_arr = malloc(sizeof(int) * 64); 
+	int *temp_arr = malloc(sizeof(int) * 64);
 	int i;
 	for (i = 0; i < 64; i++) {
 		temp_arr[i] = block[index[i]];
@@ -48,28 +50,94 @@ static void dezigzagBlock(const int index[], int block[])
 	free(temp_arr);
 }
 
+static void dequantizeBlock(jfif_dqt *dqt, int block[])
+{
+	int i;
+	for (i = 0; i< 64; i++) {
+		block[i] *= dqt->el[i];
+	}
+}
+
+static inline float coeffX(int x)
+{
+	return (x ? 0.707 : 1);
+}
+
+void doIdct(int block[])
+{
+	float idct[64];
+	int x, y, i;
+	int u,v;
+	float sum, f_uv;
+	for (i = 0; i < 64; i++) {
+		x = i % 8;
+		y = i / 8;
+		sum = 0;
+		for (u = 0; u < 8; u++) {
+			for (v = 0; v < 8; v++) {
+				f_uv = (float)block[u + (v * 8)];
+
+				sum +=  coeffX(u) * coeffX(v) * f_uv *
+					cos((2 * x + 1) * (float)u * M_PI / 16) *
+					cos((2 * y + 1) * (float)v * M_PI / 16);
+			}
+		}
+		idct[i] = 0.25 * sum;
+		LOGD("IDCT value for %d,%d = %f\n", x, y, idct[i]);
+	}
+	// Conver to integral values
+	for (i = 0; i < 64; i++) {
+		block[i] = idct[i];
+	}
+}
+
+void parseComponent(jfif_info *j_info, int block[], int comp)
+{
+	int i = 0;
+	int8_t val;
+
+	/*  DC val */
+	dc_val += getDcVal(&j_info->huff[0][comp]);
+	LOGD("The DC value is %d\n", dc_val);
+
+	block[i++] = dc_val;
+
+	while ((val = getVal(&j_info->huff[1][comp])) || i == 64) {
+		LOGD("Got an AC value=%d , index %d\n", (int)val, i++);
+		block[i++] = (int)val;
+	}
+
+	// First multiply by quantization table ?
+	dequantizeBlock(&j_info->dqt[comp], block);
+	dezigzagBlock(dezigzag_index, block);
+
+	// Perform IDCT
+	doIdct(block);
+
+	// Shift up each value by 128
+	for (i = 0; i < 64; i++)
+		block[i] += 128;
+}
+
 void parseScanData(uint8_t *ptr, jfif_info *j_info)
 {
-	int dc_val = 0, i = 0; /* The previous block dc_val is o */
-	int block_arr[64] = {0};
-	int8_t val;
+	int i = 0; /* The previous block dc_val is o */
+	int block_y[64] = {0}, block_cb[64] = {0}, block_cr[64] = {0};
 
 	initHuffParsing(ptr);
 
-	/* Parse Y block */
-	/* Get Y DC val */
-	dc_val += getDcVal(&j_info->huff[0][0]);
-	LOGD("The DC value is %d\n", dc_val);
+	dc_val = 0;
 
-	block_arr[i++] = dc_val;
+	// Parse Y block
+	LOGD("Parsing Y component\n");
+	parseComponent(j_info, block_y, 0);
 
-	while ((val = getVal(&j_info->huff[1][0])) || i == 64) {
-		LOGD("Got an AC value=%d , index %d\n", (int)val, i++);
-		// TODO(pmalani): add quantization table multiplication.
-		block_arr[i++] = (int)val;
+	LOGD("Parsing Cb component\n");
+	parseComponent(j_info, block_cb, 1);
 
-	}
-	dezigzagBlock(dezigzag_index, block_arr);
+	LOGD("Parsing Cr component\n");
+	parseComponent(j_info, block_cr, 1);
 
+	return;
 	return;
 }
