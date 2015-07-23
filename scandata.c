@@ -98,9 +98,13 @@ void parseComponent(jfif_info *j_info, int block[], int comp)
 {
 	int i = 0;
 	int8_t val;
+	int dc_diff;
 
 	/*  DC val */
-	dc_val += getDcVal(&j_info->huff[0][comp]);
+	dc_diff = getDcVal(&j_info->huff[0][comp]);
+	if (!dc_diff)
+		return;
+	dc_val += dc_diff;
 	LOGD("The DC value is %d\n", dc_val);
 
 	block[i++] = dc_val;
