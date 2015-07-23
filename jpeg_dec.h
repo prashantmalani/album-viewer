@@ -82,6 +82,11 @@ typedef struct {
 	jfif_huff	huff[2][2]; // Keep 4 since we assume 2 each
 				 // for Y and Cb/Cr respectively.
 	jfif_sos	sos;
+
+	// RGB 2-D Array pointers. Need to be initialized.
+	uint8_t		**r;
+	uint8_t		**g;
+	uint8_t		**b;
 } jfif_info;
 
 uint16_t swapBytes(uint16_t val);

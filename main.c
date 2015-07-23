@@ -162,6 +162,19 @@ int parseSof(uint8_t **ptr)
 	LOGD("SOF number of X lines is %u\n", jInfo->sof.x);
 	*ptr += 2;
 
+	// TODO: Need to free this when we're done.
+	jInfo->r = (uint8_t **)malloc(jInfo->sof.y * sizeof(uint8_t *));
+	jInfo->g = (uint8_t **)malloc(jInfo->sof.y * sizeof(uint8_t *));
+	jInfo->b = (uint8_t **)malloc(jInfo->sof.y * sizeof(uint8_t *));
+	for (i = 0; i < jInfo->sof.y; i++) {
+		jInfo->r[i] = (uint8_t *)malloc(jInfo->sof.x *
+						sizeof(uint8_t));
+		jInfo->g[i] = (uint8_t *)malloc(jInfo->sof.x *
+						sizeof(uint8_t));
+		jInfo->b[i] = (uint8_t *)malloc(jInfo->sof.x *
+						sizeof(uint8_t));
+	}
+
 	jInfo->sof.num_f = **ptr;
 	LOGD("The number of image components is %u\n", jInfo->sof.num_f);
 	(*ptr)++;
