@@ -87,7 +87,7 @@ void doIdct(int block[])
 
 		// We want to round to the nearest integer.
 		idct[i] = rintf(0.25 * sum);
-		// LOGD("IDCT value for %d,%d = %f\n", x, y, idct[i]);
+		LOGD("IDCT value for %d,%d = %f\n", x, y, idct[i]);
 	}
 	// Conver to integral values
 	for (i = 0; i < 64; i++) {
@@ -138,17 +138,18 @@ void convertToRgb(int *bk_y, int *bk_cb, int *bk_cr, int x, int y,
 	uint8_t **g = j_info->g;
 	uint8_t **b = j_info->b;
 
+	// NOTE: the y cordinate would map to the first index
 	for (i = 0; i < 64; i++) {
 		j = i % 8;
 		k = i / 8;
-		r[x + j][y + k] = (uint8_t)(bk_y[i] + ((1402 * (bk_cr[i] -
+		r[y + j][x + k] = (uint8_t)(bk_y[i] + ((1402 * (bk_cr[i] -
 			128)) / 1000));
-		g[x + j][y + k] = (uint8_t)(bk_y[i] - ((344 * (bk_cb[i] -
+		g[y + j][x + k] = (uint8_t)(bk_y[i] - ((344 * (bk_cb[i] -
 			128)) / 1000) - ((714 * (bk_cr[i] - 128)) / 1000));
-		b[x + j][y + k] = (uint8_t)(bk_y[i] + ((1772 * (bk_cb[i] -
+		b[y + j][x + k] = (uint8_t)(bk_y[i] + ((1772 * (bk_cb[i] -
 			128)) / 1000));
-		LOGD("R=%u, G=%u, b=%u\n", r[x + j][y + k], g[x + j][y + k],
-			b[x +j][y + k]);
+		LOGD("R=%u, G=%u, b=%u\n", r[y + j][x + k], g[y + j][x + k],
+			b[y +j][x + k]);
 	}
 }
 
@@ -179,7 +180,6 @@ void parseScanData(uint8_t *ptr, jfif_info *j_info)
 	memset(block_y, 0, sizeof(block_y));
 	memset(block_cb, 0, sizeof(block_cb));
 	memset(block_cr, 0, sizeof(block_cr));
-	dc_val = 0;
 	// Parse Y block.
 	LOGD("Parsing Y component\n");
 	parseComponent(j_info, block_y, 0);
@@ -192,7 +192,7 @@ void parseScanData(uint8_t *ptr, jfif_info *j_info)
 	LOGD("Parsing Cr component\n");
 	parseComponent(j_info, block_cr, 1);
 
-	convertToRgb(block_y, block_cb, block_cr, 8, 8, j_info);
+	convertToRgb(block_y, block_cb, block_cr, 8, 0, j_info);
 
 	return;
 }
