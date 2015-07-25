@@ -10,11 +10,15 @@ huffman.o: huffman.c
 scandata.o: scandata.c
 	gcc -c -g scandata.c -o scandata.o $(LFLAGS)
 
-main: main.o huffman.o scandata.o
-	gcc -g main.o huffman.o scandata.o -o main $(LFLAGS)
+write_to_bmp.o: write_to_bmp.c
+	gcc -c -g write_to_bmp.c -o write_to_bmp.o $(LFLAGS)
+
+main: main.o huffman.o scandata.o write_to_bmp.o
+	gcc -g main.o huffman.o scandata.o write_to_bmp.o -o main $(LFLAGS)
 
 clean:
 	-rm -rf main
 	-rm -rf main.o
 	-rm -rf huffman.o
 	-rm -rf scandata.o
+	 rm -rf write_to_bmp.o

@@ -100,5 +100,10 @@ uint8_t getVal(jfif_huff *huff);
 /* Scan data stuff */
 void parseScanData(uint8_t *ptr, jfif_info *j_info);
 
+/* TODO: Remove later, only for debug purposes */
+void writeToBmp(uint8_t **red, uint8_t **green, uint8_t **blue, int width,
+		int height);
+
+
 #endif
 

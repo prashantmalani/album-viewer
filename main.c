@@ -471,6 +471,8 @@ int main(int argc, char *argv[])
 	// From here on in we can actually refer only to cleanArray
 	parseScanData(cleanArray, jInfo);
 
+	writeToBmp(jInfo->r, jInfo->g, jInfo->b, jInfo->sof.x, jInfo->sof.y);
+
 	free(jInfo);
 	free(bArray);
 	free(cleanArray);
