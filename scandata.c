@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 
 static int zero_base[] = {
 	-1, -3, -7, -15, -31, -63, -127, -255, -511, -1023, -2047 };
@@ -22,7 +23,7 @@ static int getDcVal(jfif_huff *huff)
 	int val;
 	uint16_t dc_code;
 	if (num_bits == 0)
-		return 0;
+		return INT_MIN;
 
 	LOGD("The number of bits to check is %u\n", num_bits);
 	dc_code = getNumBits(num_bits);
@@ -86,7 +87,7 @@ void doIdct(int block[])
 
 		// We want to round to the nearest integer.
 		idct[i] = rintf(0.25 * sum);
-		LOGD("IDCT value for %d,%d = %f\n", x, y, idct[i]);
+		// LOGD("IDCT value for %d,%d = %f\n", x, y, idct[i]);
 	}
 	// Conver to integral values
 	for (i = 0; i < 64; i++) {
@@ -102,14 +103,17 @@ void parseComponent(jfif_info *j_info, int block[], int comp)
 
 	/*  DC val */
 	dc_diff = getDcVal(&j_info->huff[0][comp]);
-	if (!dc_diff)
-		return;
+	if (dc_diff == INT_MIN)
+		goto skip_parsing_dc;
+
 	dc_val += dc_diff;
 	LOGD("The DC value is %d\n", dc_val);
 
-	block[i++] = dc_val;
+	block[0] = dc_val;
 
-	while ((val = getVal(&j_info->huff[1][comp])) || i == 64) {
+skip_parsing_dc:
+	i = 1;
+	while ((val = getVal(&j_info->huff[1][comp])) && i != 64) {
 		LOGD("Got an AC value=%d , index %d\n", (int)val, i++);
 		block[i++] = (int)val;
 	}
@@ -157,17 +161,38 @@ void parseScanData(uint8_t *ptr, jfif_info *j_info)
 
 	dc_val = 0;
 
-	// Parse Y block
+	// Parse Y block.
 	LOGD("Parsing Y component\n");
 	parseComponent(j_info, block_y, 0);
 
+	// Parse Cb block.
 	LOGD("Parsing Cb component\n");
 	parseComponent(j_info, block_cb, 1);
 
+	// Parse Cr block.
 	LOGD("Parsing Cr component\n");
 	parseComponent(j_info, block_cr, 1);
 
 	convertToRgb(block_y, block_cb, block_cr, 0, 0, j_info);
+
+	LOGD("Parsing second MCU\n");
+	memset(block_y, 0, sizeof(block_y));
+	memset(block_cb, 0, sizeof(block_cb));
+	memset(block_cr, 0, sizeof(block_cr));
+	dc_val = 0;
+	// Parse Y block.
+	LOGD("Parsing Y component\n");
+	parseComponent(j_info, block_y, 0);
+
+	// Parse Cb block.
+	LOGD("Parsing Cb component\n");
+	parseComponent(j_info, block_cb, 1);
+
+	// Parse Cr block.
+	LOGD("Parsing Cr component\n");
+	parseComponent(j_info, block_cr, 1);
+
+	convertToRgb(block_y, block_cb, block_cr, 8, 8, j_info);
 
 	return;
 }
