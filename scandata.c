@@ -153,46 +153,44 @@ void convertToRgb(int *bk_y, int *bk_cb, int *bk_cr, int x, int y,
 	}
 }
 
+void parseBlock(jfif_info *j_info, int w_off, int h_off)
+{
+	static int block_y[64] = {0}, block_cb[64] = {0}, block_cr[64] = {0};
+
+	memset(block_y, 0, sizeof(block_y));
+	memset(block_cb, 0, sizeof(block_cb));
+	memset(block_cr, 0, sizeof(block_cr));
+
+	// Parse Y block.
+	LOGD("Parsing Y component\n");
+	parseComponent(j_info, block_y, 0);
+
+	// Parse Cb block.
+	LOGD("Parsing Cb component\n");
+	parseComponent(j_info, block_cb, 1);
+
+	// Parse Cr block.
+	LOGD("Parsing Cr component\n");
+	parseComponent(j_info, block_cr, 1);
+
+	convertToRgb(block_y, block_cb, block_cr, w_off, h_off, j_info);
+	return;
+}
+
 void parseScanData(uint8_t *ptr, jfif_info *j_info)
 {
 	int i = 0; /* The previous block dc_val is o */
-	int block_y[64] = {0}, block_cb[64] = {0}, block_cr[64] = {0};
+	int w_off, h_off;
 
 	initHuffParsing(ptr);
 
 	dc_val = 0;
 
-	// Parse Y block.
-	LOGD("Parsing Y component\n");
-	parseComponent(j_info, block_y, 0);
-
-	// Parse Cb block.
-	LOGD("Parsing Cb component\n");
-	parseComponent(j_info, block_cb, 1);
-
-	// Parse Cr block.
-	LOGD("Parsing Cr component\n");
-	parseComponent(j_info, block_cr, 1);
-
-	convertToRgb(block_y, block_cb, block_cr, 0, 0, j_info);
-
 	LOGD("Parsing second MCU\n");
-	memset(block_y, 0, sizeof(block_y));
-	memset(block_cb, 0, sizeof(block_cb));
-	memset(block_cr, 0, sizeof(block_cr));
-	// Parse Y block.
-	LOGD("Parsing Y component\n");
-	parseComponent(j_info, block_y, 0);
-
-	// Parse Cb block.
-	LOGD("Parsing Cb component\n");
-	parseComponent(j_info, block_cb, 1);
-
-	// Parse Cr block.
-	LOGD("Parsing Cr component\n");
-	parseComponent(j_info, block_cr, 1);
-
-	convertToRgb(block_y, block_cb, block_cr, 8, 0, j_info);
-
+	for (h_off = 0; h_off < j_info->sof.y; h_off += 8) {
+		for (w_off = 0; w_off < j_info->sof.x; w_off += 8) {
+			parseBlock(j_info, w_off, h_off);
+		}
+	}
 	return;
 }
