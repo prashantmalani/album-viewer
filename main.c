@@ -12,7 +12,10 @@
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
+
 #include "jpeg_dec.h"
+#include "jpeg_util.h"
+#include "jpeg_header.h"
 
 /* Array which stores the raw JPEG bytes */
 uint8_t *bArray;
@@ -21,6 +24,10 @@ uint8_t *cleanArray;
 
 int debug_level = LOG_DEBUG;
 
+/*
+ * Global data structure which will store all the file data,
+ * after it has been parsed.
+ */
 jfif_info *jInfo;
 
 int loadFile(char *path)
@@ -54,14 +61,6 @@ int loadFile(char *path)
 
 	LOGD("\n");
 	return 0;
-}
-
-uint16_t swapBytes(uint16_t val)
-{
-	uint16_t ret_val;
-	uint8_t *ptr = (uint8_t *)&val;
-	ret_val = *ptr << CHAR_BIT | *(ptr + 1);
-	return ret_val;
 }
 
 /* Parse the quantization tables (DQT) */
@@ -347,105 +346,11 @@ void sanitizeScanData(uint8_t *ptr)
 	return;
 }
 
-/*
- * FUNCTION parseHeader
- *
- * Could endian-ness be a problem on Pi? need to figure out
- *
- * Parse the header to get initial metadata about image.
- */
-int parseHeader()
-{
-	int i;
-	uint8_t *cur_ptr;
-	uint8_t jump_len;
-	uint16_t new_app0;
-	// Cast to a jfif_header, and then parse.
-	jfif_header *hdr = (jfif_header *)bArray;
-
-	jInfo->hdr.soi = swapBytes(hdr->soi);
-	if (jInfo->hdr.soi != SOI_MARKER)
-		return -1;
-
-	jInfo->hdr.app0 = swapBytes(hdr->app0);
-	if (jInfo->hdr.app0 != 0xffe0)
-		return -1;
-
-	jInfo->hdr.app0_len = swapBytes(hdr->app0_len);
-	LOGD("The APP0 segment length is %u\n", jInfo->hdr.app0_len);
-
-	memcpy(jInfo->hdr.id_str, hdr->id_str, sizeof(hdr->id_str) /
-			sizeof(hdr->id_str[0]));
-	if (strcmp((char *)jInfo->hdr.id_str, "JFIF"))
-		return -1;
-
-	jInfo->hdr.version = hdr->version;
-	LOGD("The version is %04x\n", jInfo->hdr.version);
-
-	jInfo->hdr.x_res = swapBytes(hdr->x_res);
-	LOGD("The X resolution is %u\n", jInfo->hdr.x_res);
-
-	jInfo->hdr.y_res = swapBytes(hdr->y_res);
-	LOGD("The y resolution is %u\n", jInfo->hdr.y_res);
-
-	jInfo->hdr.units= hdr->units;
-	LOGD("The units is %u\n", jInfo->hdr.units);
-
-	jInfo->hdr.x_pixel = hdr->x_pixel;
-	LOGD("The thumbnail X size is %u\n", jInfo->hdr.x_pixel);
-
-	jInfo->hdr.y_pixel = hdr->y_pixel;
-	LOGD("The thumbnail Y size is %u\n", jInfo->hdr.y_pixel);
-
-	cur_ptr = &bArray[4 + jInfo->hdr.app0_len];
-
-	// Keep skipping over the useless extension fields
-	new_app0 = swapBytes(*(uint16_t *)cur_ptr);
-	while (new_app0 == 0xFFEC || new_app0 == 0xFFED ||
-			new_app0 == 0xFFEE || new_app0 == 0xFFEF) {
-		LOGD("Skipping one extension field\n");
-		cur_ptr += 2;
-		cur_ptr += swapBytes(*(uint16_t *)cur_ptr);
-		new_app0 = swapBytes(*(uint16_t *)cur_ptr);
-	}
-
-	if (parseDqt(&cur_ptr)) {
-		LOGE("Error parsing QT\n");
-		return -1;
-	}
-
-	if (parseSof(&cur_ptr)) {
-		LOGE("Error parsing SOF\n");
-		return -1;
-	}
-
-	if (parseHuff(&cur_ptr)) {
-		LOGE("Error parsing Huffman Table.\n");
-		return -1;
-	}
-
-	if (parseSos(&cur_ptr)) {
-		LOGE("Error parsing SOS Table\n");
-		return -1;
-	}
-
-	sanitizeScanData(cur_ptr);
-
-	// Print out sanitized contents for debug purposes.
-	LOGD("\n");
-	for (i = 0; swapBytes(*(uint16_t *)(cleanArray + i)) != EOI_MARKER;
-		i++) {
-		LOGD("%02x ", cleanArray[i]);
-		if (!((i+1) % 16))
-			LOGD("\n");
-	}
-	LOGD("\n");
-
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
+	int ret = 0;
+	uint8_t *cur_ptr;
+
 	if (argc < 3) {
 		LOGE("Invalid number of arguments. Usage:\n"
 				"./main --file <filename>\n");
@@ -459,13 +364,23 @@ int main(int argc, char *argv[])
 
 	jInfo = malloc(sizeof(jfif_info));
 
-	if (parseHeader()) {
+	if (parseHeader(bArray, &jInfo->hdr)) {
 		LOGE("Error parsing Image header\n");
-		free(jInfo);
-		free(bArray);
-		free(cleanArray);
+		ret = -1;
+		goto ret_err;
+	}
 
-		return -1;
+	// We don't care about the thumbnail image so we can skip it.
+	cur_ptr = &bArray[4 + header_ptr->app0_len];
+
+	// Keep skipping over the extension fields.
+	new_app0 = swapBytes(*(uint16_t *)cur_ptr);
+	while (new_app0 == 0xFFEC || new_app0 == 0xFFED ||
+			new_app0 == 0xFFEE || new_app0 == 0xFFEF) {
+		LOGD("Skipping one extension field: %04x\n", new_app0);
+		cur_ptr += 2;
+		cur_ptr += swapBytes(*(uint16_t *)cur_ptr);
+		new_app0 = swapBytes(*(uint16_t *)cur_ptr);
 	}
 
 	// From here on in we can actually refer only to cleanArray
@@ -473,9 +388,10 @@ int main(int argc, char *argv[])
 
 	writeToBmp(jInfo->r, jInfo->g, jInfo->b, jInfo->sof.x, jInfo->sof.y);
 
+ret_err:
 	free(jInfo);
 	free(bArray);
 	free(cleanArray);
-	return 0;
+	return ret;
 }
 

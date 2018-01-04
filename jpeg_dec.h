@@ -7,25 +7,10 @@
 
 #define APP_MASK	0xFF00
 #define DQT_MARKER	0xFFDB
-#define SOI_MARKER	0XFFD8
 #define SOF_MARKER	0xFFC0
 #define HUF_MARKER	0xFFC4
 #define SOS_MARKER	0xFFDA
 #define EOI_MARKER	0xFFD9
-
-typedef struct {
-	uint16_t	soi;
-	uint16_t	app0;
-	uint16_t	app0_len;
-	// Null terminated string "JFIF"
-	uint8_t		id_str[5];
-	uint16_t	version;
-	uint8_t		units;
-	uint16_t	x_res;
-	uint16_t	y_res;
-	uint8_t		x_pixel;
-	uint8_t		y_pixel;
-} __attribute__((__packed__)) jfif_header ;
 
 // Define Quantization table
 // TODO(pmalani): Need to account for multiple QT
@@ -88,8 +73,6 @@ typedef struct {
 	uint8_t		**g;
 	uint8_t		**b;
 } jfif_info;
-
-uint16_t swapBytes(uint16_t val);
 
 /* Huff stuff */
 void genHuff(jfif_huff *huf);
