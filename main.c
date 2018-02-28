@@ -320,36 +320,11 @@ int parseSos(uint8_t **ptr)
 	return 0;
 }
 
-/*
- * FUNCTION sanitizeScanData
- *
- * Parse the scan data, and remove all app markers which were added for
- * data integrity.
- */
-void sanitizeScanData(uint8_t *ptr)
-{
-	uint8_t *new_ptr = cleanArray;
-	uint16_t cur_short = swapBytes(*(uint16_t *)ptr);
-	LOGD("Starting scan data sanitization\n");
-	while (cur_short != EOI_MARKER) {
-		if (*ptr != 0xFF) {
-			*new_ptr++ = *ptr++;
-		} else {
-			if (*(ptr + 1) == 0x00)
-				*new_ptr++ = 0xFF;
-			ptr += 2;
-		}
-		cur_short = swapBytes(*(uint16_t *)ptr);
-	}
-	memcpy(new_ptr, ptr, sizeof(uint16_t));
-	LOGD("Completed sanitization successfully!");
-	return;
-}
-
 int main(int argc, char *argv[])
 {
 	int ret = 0;
 	uint8_t *cur_ptr;
+	uint16_t new_app0;
 
 	if (argc < 3) {
 		LOGE("Invalid number of arguments. Usage:\n"
@@ -364,14 +339,14 @@ int main(int argc, char *argv[])
 
 	jInfo = malloc(sizeof(jfif_info));
 
-	if (parseHeader(bArray, &jInfo->hdr)) {
+	if (parseHeader(bArray, cleanArray, &jInfo->hdr)) {
 		LOGE("Error parsing Image header\n");
 		ret = -1;
 		goto ret_err;
 	}
 
 	// We don't care about the thumbnail image so we can skip it.
-	cur_ptr = &bArray[4 + header_ptr->app0_len];
+	cur_ptr = &bArray[4 + jInfo->hdr.app0_len];
 
 	// Keep skipping over the extension fields.
 	new_app0 = swapBytes(*(uint16_t *)cur_ptr);

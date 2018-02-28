@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "jpeg_header.h"
 #include "debug.h"
 
 #define APP_MASK	0xFF00
@@ -10,7 +11,6 @@
 #define SOF_MARKER	0xFFC0
 #define HUF_MARKER	0xFFC4
 #define SOS_MARKER	0xFFDA
-#define EOI_MARKER	0xFFD9
 
 // Define Quantization table
 // TODO(pmalani): Need to account for multiple QT
@@ -60,7 +60,7 @@ typedef struct {
 } jfif_sos;
 
 typedef struct {
-	jfif_header	hdr;
+	j_header	hdr;
 	jfif_dqt	dqt[2];
 	bool		one_dqt;
 	jfif_sof	sof;

@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+#define EOI_MARKER	0xFFD9
+
+#define APP0_MARKER 0xFFE0
+#define SOI_MARKER	0XFFD8
+
 /*
  * Structure representing the JFIF header segment (APP0).
  * This contains basic information about the image,
@@ -30,12 +35,13 @@ typedef struct {
  *
  * Args:
  *  b_arr : Byte array containing raw file data.
+ *  clean_array : Byte array into which we place the sanitized file data.
  *  header_ptr: pointer to a header structure which needs to be filled up.
  *
  * Returns
  *  0 on success (with |header_ptr| populated
  *  -1 otherwise.
  */
-int parseHeader(uint8_t *b_arr, j_header *header_ptr);
+int parseHeader(uint8_t *b_arr, uint8_t *clean_array, j_header *header_ptr);
 
 #endif
